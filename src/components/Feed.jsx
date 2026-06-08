@@ -31,6 +31,7 @@ function Feed({fposts, refresh}) {
   const [comments, setComments] = useState([]);
   const [text, setText] = useState('');
   const [user] = useAuthState(auth);
+  const [shareStatus, setShareStatus] = useState({});
 
   useEffect(() => {
     if (fposts && fposts.length > 0) {
@@ -38,7 +39,7 @@ function Feed({fposts, refresh}) {
         const postRef = doc(db, 'posts', post['uid']);
         await updateDoc(postRef, {
           views: increment(1)
-        }).catch(err => console.error("Errore view:", err));
+        }).catch(err => console.error("Error updating views:", err));
       });
     }
   }, [fposts]);
@@ -46,18 +47,18 @@ function Feed({fposts, refresh}) {
   function dateCovert(day, month){
     let m = '';
     switch(month){
-      case 0: m='Gen'; break;
+      case 0: m='Jan'; break;
       case 1: m='Feb'; break;
       case 2: m='Mar'; break;
       case 3: m='Apr'; break;
-      case 4: m='Mag'; break;
-      case 5: m='Giu'; break;
-      case 6: m='Lug'; break;
-      case 7: m='Ago'; break;
-      case 8: m='Set'; break;
-      case 9: m='Ott'; break;
+      case 4: m='May'; break;
+      case 5: m='Jun'; break;
+      case 6: m='Jul'; break;
+      case 7: m='Aug'; break;
+      case 8: m='Sep'; break;
+      case 9: m='Oct'; break;
       case 10: m='Nov'; break;
-      case 11: m='Dic'; break;
+      case 11: m='Dec'; break;
       default: m='';
     }
     return day + ' ' + m;
@@ -108,7 +109,7 @@ function Feed({fposts, refresh}) {
       await addDoc(collection(db, 'posts', postId, 'comments'), {
         text: text,
         username: user.displayName,
-        img: user.photoURL, // Salviamo la foto profilo anche nel commento
+        img: user.photoURL,
         date: serverTimestamp()
       });
 
@@ -126,18 +127,40 @@ function Feed({fposts, refresh}) {
       setComments(comms);
       refresh();
     } catch (error) {
-      console.error("Errore nell'invio del commento:", error);
+      console.error("Error sending comment:", error);
     }
   };
 
+  // Funzione di condivisione aggiornata con incremento del contatore su Firestore
+  const handleShare = async (postId) => {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    navigator.clipboard.writeText(postUrl).then(async () => {
+      setShareStatus(prev => ({ ...prev, [postId]: 'Copied!' }));
+      
+      try {
+        // Incrementa il contatore share sul database
+        await updateDoc(doc(db, 'posts', postId), {
+          shares: increment(1)
+        });
+        refresh();
+      } catch (err) {
+        console.error("Error updating shares:", err);
+      }
+
+      setTimeout(() => {
+        setShareStatus(prev => ({ ...prev, [postId]: null }));
+      }, 2000);
+    });
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen">
+    <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen select-none">
       <MonetagAd zoneId="11119420" isVignette={true} />
 
       {
         fposts?.map((post, index)=>(
           <React.Fragment key={post['uid']}>
-            <div className="p-4 border-b border-zinc-800 hover:bg-zinc-900/20 transition duration-200">
+            <div className="p-4 border-b border-zinc-800 hover:bg-zinc-900/10 transition duration-200">
               <div className="flex space-x-3">
                 <a href={'/user/' + post.id} className="flex-shrink-0">
                   <img className="h-10 w-10 rounded-full object-cover" src={post.img ? post.img : 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1665px-No-Image-Placeholder.svg.png'} alt="" />
@@ -151,96 +174,114 @@ function Feed({fposts, refresh}) {
                     </span>
                   </div>
                   
-                  <p className="text-white text-[15px] leading-relaxed mt-1 whitespace-pre-wrap">
+                  <p className="text-[#e7e9ea] text-[15px] leading-relaxed mt-1 whitespace-pre-wrap break-words">
                     {post.text}
                   </p>
 
-                  <div className="flex justify-between max-w-md mt-3 text-zinc-500">
-                    {/* View Counter */}
-                    <div className="flex items-center space-x-2 text-sm group cursor-pointer">
+                  {/* ICONE E NUMERI ANCORA PIÙ GRANDI (h-5 w-5 e text-[14px]) */}
+                  <div className="flex justify-between max-w-md mt-4 text-zinc-500">
+                    
+                    {/* Views Counter */}
+                    <div className="flex items-center space-x-1 group cursor-pointer">
                       <div className="p-2 rounded-full group-hover:bg-sky-500/10 group-hover:text-sky-500 transition">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       </div>
-                      <span className="group-hover:text-sky-500 text-xs">{post.views ? likesConvert(post.views) : '0'}</span>
+                      <span className="group-hover:text-sky-500 text-[14px] font-medium pl-0.5">{post.views ? likesConvert(post.views) : '0'}</span>
                     </div>
 
                     {/* Comment Button */}
-                    <div onClick={()=>openComment(post['uid'])} className="flex items-center space-x-2 text-sm group cursor-pointer">
+                    <div onClick={()=>openComment(post['uid'])} className="flex items-center space-x-1 group cursor-pointer">
                       <div className="p-2 rounded-full group-hover:bg-sky-500/10 group-hover:text-sky-500 transition">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                         </svg>
                       </div>
-                      <span className="group-hover:text-sky-500 text-xs">{post.comments ? post.comments : '0'}</span>
+                      <span className="group-hover:text-sky-500 text-[14px] font-medium pl-0.5">{post.comments ? post.comments : '0'}</span>
                     </div>
 
                     {/* Like Button */}
-                    <div onClick={(e)=>{ if(user && post.likes.indexOf(user.uid)<0) like(post['uid'], post.category, e) }} className="flex items-center space-x-2 text-sm group cursor-pointer">
+                    <div onClick={(e)=>{ if(user && post.likes.indexOf(user.uid)<0) like(post['uid'], post.category, e) }} className="flex items-center space-x-1 group cursor-pointer">
                       <div className="p-2 rounded-full group-hover:bg-pink-500/10 group-hover:text-pink-500 transition">
-                        <svg className="h-4 w-4" fill={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'none'} stroke={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'currentColor'} strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'none'} stroke={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'currentColor'} strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                         </svg>
                       </div>
-                      <span className="group-hover:text-pink-500 text-xs">{likesConvert(post.likes.length)}</span>
+                      <span className="group-hover:text-pink-500 text-[14px] font-medium pl-0.5">{likesConvert(post.likes.length)}</span>
                     </div>
+
+                    {/* Share Button con Contatore Funzionante */}
+                    <div onClick={()=>handleShare(post['uid'])} className="flex items-center space-x-1 group cursor-pointer relative">
+                      <div className="p-2 rounded-full group-hover:bg-green-500/10 group-hover:text-green-500 transition">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                      </div>
+                      <span className="group-hover:text-green-500 text-[14px] font-medium pl-0.5">{post.shares ? likesConvert(post.shares) : '0'}</span>
+                      {shareStatus[post['uid']] && (
+                        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-zinc-800 text-white text-[10px] px-2 py-0.5 rounded-md font-bold shadow-md whitespace-nowrap animate-bounce">
+                          {shareStatus[post['uid']]}
+                        </span>
+                      )}
+                    </div>
+
                   </div>
                 </div>
               </div>
 
-              {/* Sezione Commenti Ottimizzata stile X */}
+              {/* Sezione Commenti */}
               {open === (post['uid']) && (
-                <div className="mt-4 pl-4 ml-3 border-l-2 border-zinc-800 space-y-4">
+                <div className="mt-4 pl-4 ml-3 border-l border-zinc-800 space-y-4">
                   {user ? (
-                    <div className="flex items-start space-x-3 pt-2">
-                      <img className="h-8 w-8 rounded-full object-cover mt-0.5" src={user.photoURL} alt="" />
-                      <div className="flex-1 bg-zinc-900/40 p-2 rounded-xl border border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-start space-x-3 pt-1">
+                      <img className="h-8 w-8 rounded-full object-cover mt-1" src={user.photoURL} alt="" />
+                      <div className="flex-1 bg-zinc-950 p-2 rounded-xl border border-zinc-800 flex items-center justify-between">
                         <input 
                           value={text} 
                           onChange={(e)=>setText(e.target.value)} 
-                          className="bg-transparent outline-none flex-1 text-[14px] text-white px-2 placeholder-zinc-500" 
-                          placeholder="Posta la tua risposta..." 
+                          className="bg-transparent outline-none flex-1 text-[14px] text-white px-2 placeholder-zinc-600" 
+                          placeholder="Post your reply..." 
                         />
                         <button 
                           onClick={() => sendComment(post['uid'])}
                           disabled={!text.trim()}
                           className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-full text-xs transition duration-150"
                         >
-                          Rispondi
+                          Reply
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-xs text-zinc-500 p-2 italic bg-zinc-900/20 rounded-lg border border-zinc-800">
-                      Accedi per poter rispondere a questo post.
+                    <div className="text-xs text-zinc-500 p-2 italic bg-zinc-900/25 rounded-lg border border-zinc-800">
+                      Log in to post your reply.
                     </div>
                   )}
                   
-                  {/* Lista Risposte con Foto Profilo e Spaziature Morbide */}
-                  <div className="space-y-3 pt-1">
+                  {/* Lista Risposte */}
+                  <div className="space-y-4 pt-1">
                     {comments && comments.length > 0 ? (
                       comments.map((comment, cIdx)=>(
-                        <div key={cIdx} className="flex space-x-3 items-start p-2 rounded-xl hover:bg-zinc-900/10 transition">
+                        <div key={cIdx} className="flex space-x-3 items-start p-2 rounded-xl hover:bg-zinc-900/5 transition">
                           <img 
                             className="h-8 w-8 rounded-full object-cover mt-0.5" 
                             src={comment.img ? comment.img : 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1665px-No-Image-Placeholder.svg.png'} 
                             alt="" 
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm">
+                            <div className="text-[14px]">
                               <span className="font-bold text-white mr-1.5 hover:underline cursor-pointer">{comment.username}</span>
-                              <span className="text-zinc-500 text-xs">Risposta</span>
+                              <span className="text-zinc-500 text-xs">replied</span>
                             </div>
-                            <p className="text-zinc-200 text-[14px] leading-relaxed mt-0.5 break-words whitespace-pre-wrap">
+                            <p className="text-zinc-300 text-[14px] leading-relaxed mt-0.5 break-words whitespace-pre-wrap">
                               {comment.text}
                             </p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-xs text-zinc-600 pl-11">Nessuna risposta ancora.</div>
+                      <div className="text-xs text-zinc-600 pl-11">No replies yet.</div>
                     )}
                   </div>
                 </div>
@@ -250,7 +291,7 @@ function Feed({fposts, refresh}) {
             {/* Banner Pubblicitario Integrato nel Feed */}
             {(index + 1) % 3 === 0 && (
               <div className="border-b border-zinc-800 p-4 text-center bg-zinc-950/40">
-                <span className="text-[11px] text-zinc-500 block mb-2 font-semibold tracking-wider uppercase">Contenuto Sponsorizzato</span>
+                <span className="text-[11px] text-zinc-500 block mb-2 font-semibold tracking-wider uppercase">Sponsored Content</span>
                 <div className="flex justify-center items-center min-h-[100px]">
                   <MonetagAd zoneId="11119349" index={index} isVignette={false} />
                 </div>

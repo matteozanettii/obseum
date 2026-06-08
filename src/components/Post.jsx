@@ -47,7 +47,7 @@ function Post({ refresh }) {
               disabled={!text.trim()}
               className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-5 py-1.5 rounded-full text-sm transition duration-200"
             >
-              Posta
+              Post
             </button>
           </div>
         </div>
