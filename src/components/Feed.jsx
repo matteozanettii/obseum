@@ -151,9 +151,37 @@ function Feed({fposts, refresh}) {
     });
   };
 
+  // FUNZIONE MAGICA: Riconosce i link nel testo e li rende cliccabili ed estetici
+  const renderTextWithLinks = (inputText) => {
+    if (!inputText) return '';
+    
+    // Espressione regolare che intercetta i link HTTP/HTTPS
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Divide il testo in base ai link trovati
+    const parts = inputText.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a 
+            key={index} 
+            href={part} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-sky-500 hover:underline break-all inline-block font-medium"
+            onClick={(e) => e.stopPropagation()} // Evita che il click sul link attivi altre funzioni del post
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen select-none">
-      {/* Manteniamo la Vignette iniziale: monetizza bene ed è pulita */}
       <MonetagAd zoneId="11119420" isVignette={true} />
 
       {
@@ -173,8 +201,9 @@ function Feed({fposts, refresh}) {
                     </span>
                   </div>
                   
+                  {/* Testo del post modificato per far girare la funzione dei link cliccabili */}
                   <p className="text-[#e7e9ea] text-[15px] leading-relaxed mt-1 whitespace-pre-wrap break-words">
-                    {post.text}
+                    {renderTextWithLinks(post.text)}
                   </p>
 
                   <div className="flex justify-between max-w-md mt-4 text-zinc-500">
@@ -272,8 +301,9 @@ function Feed({fposts, refresh}) {
                               <span className="font-bold text-white mr-1.5 hover:underline cursor-pointer">{comment.username}</span>
                               <span className="text-zinc-500 text-xs">replied</span>
                             </div>
+                            {/* Anche i commenti ora usano la funzione dei link cliccabili */}
                             <p className="text-zinc-300 text-[14px] leading-relaxed mt-0.5 break-words whitespace-pre-wrap">
-                              {comment.text}
+                              {renderTextWithLinks(comment.text)}
                             </p>
                           </div>
                         </div>
