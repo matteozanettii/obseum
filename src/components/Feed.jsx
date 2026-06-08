@@ -101,6 +101,40 @@ function Feed({fposts, refresh}) {
     setText('');
   }
 
+  // NUOVA FUNZIONE: Invia il commento su Firestore e aggiorna il contatore del post
+  const sendComment = async (postId) => {
+    if (!text.trim() || !user) return;
+
+    try {
+      // 1. Aggiunge il commento nella sotto-collezione del post
+      await addDoc(collection(db, 'posts', postId, 'comments'), {
+        text: text,
+        username: user.displayName,
+        date: serverTimestamp()
+      });
+
+      // 2. Incrementa il numero dei commenti sul documento del post principale
+      await updateDoc(doc(db, 'posts', postId), {
+        comments: increment(1)
+      });
+
+      setText('');
+      // Ricarica i commenti localmente al volo per vederlo subito
+      const q = query(collection(db, "posts", postId, 'comments'), orderBy('date', 'desc'));
+      const querySnapshot = await getDocs(q);
+      let comms = [];
+      querySnapshot.forEach((doc) => {
+        comms.push(doc.data());
+      });
+      setComments(comms);
+      
+      // Aggiorna il feed principale
+      refresh();
+    } catch (error) {
+      console.error("Errore nell'invio del commento:", error);
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen">
       <MonetagAd zoneId="11119420" isVignette={true} />
@@ -108,7 +142,6 @@ function Feed({fposts, refresh}) {
       {
         fposts?.map((post, index)=>(
           <React.Fragment key={post['uid']}>
-            {/* Struttura Post in stile X */}
             <div className="p-4 border-b border-zinc-800 hover:bg-zinc-900/40 transition duration-200">
               <div className="flex space-x-3">
                 <a href={'/user/' + post.id} className="flex-shrink-0">
@@ -127,7 +160,6 @@ function Feed({fposts, refresh}) {
                     {post.text}
                   </p>
 
-                  {/* Icone di Interazione allineate orizzontalmente stile X */}
                   <div className="flex justify-between max-w-md mt-3 text-zinc-500">
                     {/* View Counter */}
                     <div className="flex items-center space-x-2 text-sm group cursor-pointer">
@@ -165,19 +197,40 @@ function Feed({fposts, refresh}) {
 
               {/* Sezione Commenti */}
               {open === (post['uid']) && (
-                <div className="mt-4 pl-12 border-l-2 border-zinc-800">
-                  {user && (
-                    <div className="flex items-center space-x-2 mb-4">
-                      <input value={text} onChange={(e)=>setText(e.target.value)} className="bg-transparent border-b border-zinc-700 focus:border-sky-500 outline-none flex-1 text-sm text-white py-1" placeholder='Scrivi un commento...' />
+                <div className="mt-4 pl-12 border-l border-zinc-800">
+                  {user ? (
+                    /* Box Scrittura Commento - Solo se Loggati */
+                    <div className="flex items-center space-x-2 mb-4 bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+                      <input 
+                        value={text} 
+                        onChange={(e)=>setText(e.target.value)} 
+                        className="bg-transparent outline-none flex-1 text-sm text-white py-1 placeholder-zinc-500" 
+                        placeholder="Posta la tua risposta..." 
+                      />
+                      <button 
+                        onClick={() => sendComment(post['uid'])}
+                        disabled={!text.trim()}
+                        className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-4 py-1 rounded-full text-xs transition"
+                      >
+                        Rispondi
+                      </button>
                     </div>
+                  ) : (
+                    <div className="text-xs text-zinc-500 mb-3 italic">Accedi per poter rispondere a questo post.</div>
                   )}
+                  
+                  {/* Lista dei Commenti Esistenti (Visibile a tutti) */}
                   <div className="space-y-3">
-                    {comments.map((comment, cIdx)=>(
-                      <div key={cIdx} className="text-sm">
-                        <span className="font-bold text-white mr-2">{comment.username}:</span>
-                        <span className="text-zinc-300">{comment.text}</span>
-                      </div>
-                    ))}
+                    {comments && comments.length > 0 ? (
+                      comments.map((comment, cIdx)=>(
+                        <div key={cIdx} className="text-sm bg-zinc-900/20 p-2 rounded-lg border border-zinc-900/60">
+                          <span className="font-bold text-white mr-2">{comment.username}</span>
+                          <p className="text-zinc-300 inline">{comment.text}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-zinc-600 pl-2">Nessuna risposta ancora.</div>
+                    )}
                   </div>
                 </div>
               )}
