@@ -131,14 +131,12 @@ function Feed({fposts, refresh}) {
     }
   };
 
-  // Funzione di condivisione aggiornata con incremento del contatore su Firestore
   const handleShare = async (postId) => {
     const postUrl = `${window.location.origin}/post/${postId}`;
     navigator.clipboard.writeText(postUrl).then(async () => {
       setShareStatus(prev => ({ ...prev, [postId]: 'Copied!' }));
       
       try {
-        // Incrementa il contatore share sul database
         await updateDoc(doc(db, 'posts', postId), {
           shares: increment(1)
         });
@@ -155,6 +153,7 @@ function Feed({fposts, refresh}) {
 
   return (
     <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen select-none">
+      {/* Manteniamo la Vignette iniziale: monetizza bene ed è pulita */}
       <MonetagAd zoneId="11119420" isVignette={true} />
 
       {
@@ -178,7 +177,6 @@ function Feed({fposts, refresh}) {
                     {post.text}
                   </p>
 
-                  {/* ICONE E NUMERI ANCORA PIÙ GRANDI (h-5 w-5 e text-[14px]) */}
                   <div className="flex justify-between max-w-md mt-4 text-zinc-500">
                     
                     {/* Views Counter */}
@@ -212,7 +210,7 @@ function Feed({fposts, refresh}) {
                       <span className="group-hover:text-pink-500 text-[14px] font-medium pl-0.5">{likesConvert(post.likes.length)}</span>
                     </div>
 
-                    {/* Share Button con Contatore Funzionante */}
+                    {/* Share Button */}
                     <div onClick={()=>handleShare(post['uid'])} className="flex items-center space-x-1 group cursor-pointer relative">
                       <div className="p-2 rounded-full group-hover:bg-green-500/10 group-hover:text-green-500 transition">
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -287,16 +285,6 @@ function Feed({fposts, refresh}) {
                 </div>
               )}
             </div>
-
-            {/* Banner Pubblicitario Integrato nel Feed */}
-            {(index + 1) % 3 === 0 && (
-              <div className="border-b border-zinc-800 p-4 text-center bg-zinc-950/40">
-                <span className="text-[11px] text-zinc-500 block mb-2 font-semibold tracking-wider uppercase">Sponsored Content</span>
-                <div className="flex justify-center items-center min-h-[100px]">
-                  <MonetagAd zoneId="11119349" index={index} isVignette={false} />
-                </div>
-              </div>
-            )}
           </React.Fragment>
         ))
       }
