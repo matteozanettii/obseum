@@ -21,9 +21,8 @@ function App() {
             <Route
               index
               element={
-                <>
-                  {user ? <Main/> : <div className="color-1 text-xl text-center m-5">Log in to view the feed.</div>}
-                </>
+                /* Rimosso il blocco rigido: ora Main (il Feed) viene caricato sempre */
+                <Main />
               }
             />
             <Route path="/user/:uid" element={<>{user ? <UserPage/> : <div className="color-1 text-xl text-center m-5">Log in to view the profile.</div>}</>} />

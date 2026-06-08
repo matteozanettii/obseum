@@ -1,77 +1,59 @@
+import React, { useState } from 'react';
+import { db, auth } from '../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import React, {useState} from 'react'
-import { useAuthState } from 'react-firebase-hooks/auth'
-import { auth, db } from '../firebase'
+import { useAuthState } from 'react-firebase-hooks/auth';
 
-function Post({refresh}) {
+function Post({ refresh }) {
+  const [text, setText] = useState('');
   const [user] = useAuthState(auth);
-  const [msg, setMsg] = useState('');
 
-  const publish = async()=>{
-    let text = msg;
-    if (text.length === 0) return;
-    setMsg('');
-
-    // Se l'utente mette un hashtag prende quello, altrimenti assegna la categoria 'Other' in automatico
-    let finalCategory = 'Other';
-    if (text.includes('#')) {
-      try {
-        let parts = text.split('#');
-        finalCategory = parts[1].split(' ')[0] || 'Other';
-      } catch (e) {
-        finalCategory = 'Other';
-      }
-    }
+  const sendPost = async () => {
+    if (!text.trim() || !user) return;
 
     await addDoc(collection(db, 'posts'), {
-        date: serverTimestamp(),
-        id: user.uid,
-        likes: [],
-        views: 0, 
-        text: text,
-        username: user.displayName,
-        img: user.photoURL,
-        category: finalCategory,
-    })
-    refresh();
-  }
-  
-  return (
-    <div className='bg-color-3 rounded-lg my-5'>
-        <div className="flex flex-shrink-0 p-4 pb-0">
-        <a href="/" className="flex-shrink-0 group block">
-            <div className="flex items-center">
-            <div>
-                <img className="inline-block h-10 w-10 rounded-full" src={user.photoURL} alt="" />
-            </div>
-            <div className="ml-3">
-                <p className="text-base leading-6 font-medium color-1">
-                    {user.displayName} 
-                    <span className="p-1 text-sm leading-5 font-medium color-2">
-                        Now
-                    </span>
-                </p>
-            </div>
-            </div>
-        </a>
-        </div>
-        <div className="pl-16">
-        <p className="text-base width-auto font-medium flex-shrink text-white">
-            <textarea className="bg-transparent border-none border-transparent focus:border-none w-5/6 h-100" placeholder="Scrivi qualcosa... (Puoi usare #Gaming #News #Programming se vuoi)" value={msg} onChange={(e)=>setMsg(e.target.value)}/>
-        </p>
+      text: text,
+      id: user.uid,
+      username: user.displayName,
+      img: user.photoURL,
+      date: serverTimestamp(),
+      likes: [],
+      comments: 0,
+      views: 0,
+      category: 'Other'
+    });
 
-        <div className="flex">
-            <div className="w-full">
-                <div className="flex justify-end items-center">
-                    <div className="text-center">
-                    <button onClick={publish} className='bg-color-2 text-white px-5 py-1 m-2 rounded-full'>Post</button>
-                    </div>           
-                </div>
-            </div>
+    setText('');
+    refresh();
+  };
+
+  // SE L'UTENTE NON È LOGGATO, BLOCCHIAMO IL RENDERING QUI.
+  // In questo modo l'app non cercherà mai di leggere user.photoURL se l'utente è null.
+  if (!user) return null;
+
+  return (
+    <div className="p-4 border-b border-zinc-800 bg-black max-w-2xl mx-auto border-x">
+      <div className="flex space-x-3">
+        <img className="h-10 w-10 rounded-full object-cover mt-1" src={user.photoURL} alt="" />
+        <div className="flex-1">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="w-full bg-transparent text-white text-lg placeholder-zinc-500 outline-none resize-none border-none focus:ring-0 min-h-[60px]"
+            placeholder="Che c'è di nuovo?"
+          />
+          <div className="flex justify-end pt-2 border-t border-zinc-800/60 mt-2">
+            <button
+              onClick={sendPost}
+              disabled={!text.trim()}
+              className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-5 py-1.5 rounded-full text-sm transition duration-200"
+            >
+              Posta
+            </button>
+          </div>
         </div>
-        </div>
+      </div>
     </div>
-  )
+  );
 }
 
-export default Post
+export default Post;
