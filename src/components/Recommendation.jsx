@@ -1,79 +1,55 @@
-import React, {useState} from 'react'
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '../firebase';
-import { doc, getDoc, limit, orderBy, query, where, collection, getDocs } from 'firebase/firestore';
-import Feed from './Feed';
+import React, { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 function Recommendation() {
-    const [loading, setLoading] = useState(true);
-    const [user] = useAuthState(auth);
-    const [posts, setPosts] = useState();
+  const [recommendations, setRecommendations] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    const getRecommendations = async()=>{
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        let recom = snap.data().recommendation;
-        let total = recom.News + recom['Q&A'] + recom.Programming + recom.Other + recom.Gaming;
+  useEffect(() => {
+    const getRecommendations = async () => {
+      try {
+        const docRef = doc(db, 'recommendations', 'data');
+        const docSnap = await getDoc(docRef);
 
-        let news = recom.News / total;
-        let qna = recom['Q&A'] / total + news;
-        let program = recom.Programming / total + qna;
-        let gaming = recom.Gaming / total + program;
-        let rposts = [];
-        let indexes = [];
-
-        for(let i = 0; i<5; i++){
-            let random = Math.random();
-            let category = '';
-
-            if(random<news)category='News';
-            else if(random<qna)category='Q&A';
-            else if(random<program)category='Programming';
-            else if(random<gaming)category='Gaming';
-            else category='Other';
-
-            const q = query(collection(db, 'posts'), where('category', '==', category), orderBy('likes', 'desc'), limit(5));
-            const querySnapshot = await getDocs(q)
-            let added = false;
-            querySnapshot.forEach((doc)=>{
-                let data = doc.data();
-                data['uid'] = doc.id;
-
-                if(added)return;
-
-                if(rposts.indexOf(data)<0 && indexes.indexOf(data['uid'])<0){
-                    rposts.push(data);
-                    indexes.push(data['uid']);
-                    added=true;
-                }
-            })
+        if (docSnap.exists()) {
+          setRecommendations(docSnap.data());
+        } else {
+          console.log("No recommendations document found!");
         }
-
-        setPosts(rposts);
+      } catch (error) {
+        console.error("Error fetching recommendations:", error);
+      } finally {
         setLoading(false);
-    }
-
-    user && loading && getRecommendations();
-
-    const refresh = async () => {
-        const rposts = [];
-        for (const post of posts) {
-          const id = post['uid'];
-          const snap = await getDoc(doc(db, 'posts', id));
-          const data = snap.data();
-          data['uid'] = snap.id;
-          rposts.push(data);
-        }
-        setPosts(rposts);
-        console.log(rposts);
+      }
     };
-    
-    return (
-    <>
-        <div className='color-1'>Recommended</div>
-        {loading && <div className='color-1'>Loading...</div>}
-        {!loading && <Feed fposts={posts} refresh={refresh}/>}
-    </>
-  )
+
+    getRecommendations();
+  }, []);
+
+  return (
+    <div className="hidden lg:inline w-80 h-fit sticky top-0 p-3 space-y-4 select-none">
+      {/* Box dei Trend / Search */}
+      <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl space-y-3">
+        <h3 className="text-xl font-black text-white px-1">What's happening</h3>
+
+        {loading ? (
+          <div className="text-xs text-zinc-500 italic px-1">Loading trends...</div>
+        ) : recommendations && recommendations.News ? (
+          /* CONTROLLO SICURO: Mappa l'array News solo se esiste davvero */
+          recommendations.News.map((item, idx) => (
+            <div key={idx} className="hover:bg-zinc-900/40 p-2 rounded-xl transition cursor-pointer">
+              <p className="text-xs text-zinc-500 font-medium">{item.category || 'Trending'}</p>
+              <h4 className="text-sm font-bold text-white mt-0.5">{item.title}</h4>
+              <p className="text-xs text-zinc-500 mt-1">{item.postsCount || '0'} Posts</p>
+            </div>
+          ))
+        ) : (
+          <div className="text-xs text-zinc-600 italic px-1">No trends available right now.</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-export default Recommendation
+export default Recommendation;

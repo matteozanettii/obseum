@@ -1,58 +1,107 @@
-import React, { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import Feed from '../components/Feed';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import Recommendation from '../components/Recommendation';
+import Feed from '../components/Feed';
 
 function UserPage() {
-  let uid =  useParams().uid;
-  const [user, setUser] = useState(null);
-  const [loading, setloading] = useState(true)
-  const [posts, setPosts] = useState([]);
+  const { uid } = useParams(); // Può essere sia il nome che l'ID alfanumerico
+  const [userPosts, setUserPosts] = useState([]);
+  const [displayName, setDisplayName] = useState(uid);
+  const [loading, setLoading] = useState(true);
 
-  const getUserData = async()=>{
-    const snap = await getDoc(doc(db, 'users', uid));
-    setUser(snap.data());
-    setloading(false);
-    console.log(user);
-    refresh();
-  }
-  loading && getUserData();
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      if (!uid) return;
+      setLoading(true);
+      try {
+        let posts = [];
+        
+        // FASE 1: Proviamo a cercare dando per scontato che sia il campo 'id' (alfanumerico di Firebase)
+        const qById = query(collection(db, 'posts'), where('id', '==', uid));
+        const snapshotById = await getDocs(qById);
+        
+        snapshotById.forEach((doc) => {
+          posts.push({ uid: doc.id, ...doc.data() });
+        });
 
-  const refresh = async()=>{
-    const q = query(collection(db, 'posts'), where('id', '==', uid), orderBy('date', 'desc'))
-    const snap = await getDocs(q);
-    let rposts = [];
-    snap.forEach((doc)=>{
-        let data = doc.data();
-        data['uid'] = doc.id;
-        rposts.push(data);
-    })
-    setPosts(rposts);
-  }
+        // FASE 2: Se non ha trovato nulla, significa che 'uid' è lo username testuale (es: Matteo)
+        if (posts.length === 0) {
+          const qByUsername = query(collection(db, 'posts'), where('username', '==', uid));
+          const snapshotByUsername = await getDocs(qByUsername);
+          
+          snapshotByUsername.forEach((doc) => {
+            posts.push({ uid: doc.id, ...doc.data() });
+          });
+          setDisplayName(uid); // Lo username è già pulito
+        } else {
+          // Se abbiamo trovato i post tramite l'ID alfanumerico, prendiamo lo username reale dal primo post
+          if (posts[0] && posts[0].username) {
+            setDisplayName(posts[0].username);
+          }
+        }
+        
+        // Ordinamento cronologico sicuro tramite i timestamp di Firebase
+        posts.sort((a, b) => {
+          const timeA = a.date?.seconds || 0;
+          const timeB = b.date?.seconds || 0;
+          return timeB - timeA;
+        });
+        
+        setUserPosts(posts);
+      } catch (error) {
+        console.error("Error loading user timeline:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserPosts();
+  }, [uid]);
 
   return (
-    <>
-        <div className='bg-color-3 rounded-lg my-5'>
-            <div className="flex flex-shrink-0 p-4">
-                <div className="flex-shrink-0 group block">
-                    <div className="flex items-center">
-                        <div>
-                            <img className="inline-block h-10 w-10 rounded-full" src={user?.img} alt="" />
-                        </div>
-                        <div className="ml-3">
-                            <p className="text-base leading-6 font-medium color-1">
-                                {user?.username}
-                                {loading && <>Loading...</>}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen">
+      {/* Header del Profilo con il Nome Reale */}
+      <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10">
+        <h1 className="text-xl font-bold tracking-tight text-white">{displayName}</h1>
+        <p className="text-xs text-zinc-500 font-medium">
+          {userPosts.length} {userPosts.length === 1 ? 'post' : 'posts'}
+        </p>
+      </div>
+
+      {/* Box Informazioni Stile X */}
+      <div className="p-4 border-b border-zinc-800 bg-zinc-900/10">
+        <div className="flex items-center space-x-4">
+          <div className="h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 text-2xl font-bold uppercase text-sky-500">
+            {displayName?.charAt(0)}
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">@{displayName}</h2>
+            <p className="text-sm text-zinc-400">Obseum Member Profile</p>
+          </div>
         </div>
-        {posts && <Feed fposts={posts} refresh={refresh}/>}
-    </>
-  )
+      </div>
+
+      {/* Menu Timeline Tab */}
+      <div className="p-4 border-b border-zinc-800 bg-zinc-950/30">
+        <span className="text-sm font-bold text-white border-b-4 border-sky-500 pb-4 px-2">Posts</span>
+      </div>
+
+      {/* Feed dei Post */}
+      <div className="pb-24">
+        {loading ? (
+          <div className="text-center p-10 text-zinc-500 text-sm italic">Loading timeline...</div>
+        ) : userPosts.length > 0 ? (
+          <Feed fposts={userPosts} refresh={() => window.location.reload()} />
+        ) : (
+          <div className="text-center p-10 text-zinc-600 text-sm italic">
+            @{displayName} hasn't posted anything yet.
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-export default UserPage
+export default UserPage;
