@@ -166,7 +166,7 @@ function Feed({fposts, refresh}) {
             target="_blank" 
             rel="noopener noreferrer" 
             className="text-sky-500 hover:underline break-all inline-block font-medium"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()} // Blocca il cambio pagina se clicchi il link blu
           >
             {part}
           </a>
@@ -176,7 +176,7 @@ function Feed({fposts, refresh}) {
     });
   };
 
-  // FUNZIONE EXTRACTOR: Trova l'ID di un video YouTube nel testo (sia link lunghi che corti youtu.be)
+  // FUNZIONE EXTRACTOR: Trova l'ID di un video YouTube nel testo
   const extractYouTubeId = (inputText) => {
     if (!inputText) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -191,14 +191,32 @@ function Feed({fposts, refresh}) {
       {
         fposts?.map((post, index)=>(
           <React.Fragment key={post['uid']}>
-            <div className="p-4 border-b border-zinc-800 hover:bg-zinc-900/10 transition duration-200">
+            {/* INTERO BOX POST CLICCABILE: Reindirizza alla pagina del singolo post */}
+            <div 
+              onClick={() => window.location.href = `/post/${post['uid']}`}
+              className="p-4 border-b border-zinc-800 hover:bg-zinc-900/10 transition duration-200 cursor-pointer"
+            >
               <div className="flex space-x-3">
-                <a href={'/user/' + post.id} className="flex-shrink-0">
+                {/* Link Profilo: Usa lo username per evitare gli ID alfanumerici brutti */}
+                <a 
+                  href={'/user/' + (post.username || post.id)} 
+                  className="flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()} // Impedisce di attivare il click del post
+                >
                   <img className="h-10 w-10 rounded-full object-cover" src={post.img ? post.img : 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1665px-No-Image-Placeholder.svg.png'} alt="" />
                 </a>
+                
                 <div className="flex-1">
                   <div className="flex items-center space-x-1">
-                    <span className="font-bold text-white hover:underline cursor-pointer text-[15px]">{post.username}</span>
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.location.href = '/user/' + (post.username || post.id);
+                      }}
+                      className="font-bold text-white hover:underline cursor-pointer text-[15px]"
+                    >
+                      {post.username}
+                    </span>
                     <span className="text-zinc-500 text-sm">·</span>
                     <span className="text-zinc-500 text-sm">
                       {post.date && dateCovert(post.date.toDate().getDate(), post.date.toDate().getMonth())}
@@ -212,7 +230,10 @@ function Feed({fposts, refresh}) {
 
                   {/* ANTEPRIMA VIDEO YOUTUBE DINAMICA */}
                   {extractYouTubeId(post.text) && (
-                    <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800 aspect-video w-full bg-zinc-950">
+                    <div 
+                      className="mt-3 rounded-2xl overflow-hidden border border-zinc-800 aspect-video w-full bg-zinc-950"
+                      onClick={(e) => e.stopPropagation()} // Non fa cambiare pagina se clicchi sul player
+                    >
                       <iframe
                         className="w-full h-full"
                         src={`https://www.youtube.com/embed/${extractYouTubeId(post.text)}`}
@@ -227,7 +248,7 @@ function Feed({fposts, refresh}) {
                   <div className="flex justify-between max-w-md mt-4 text-zinc-500">
                     
                     {/* Views Counter */}
-                    <div className="flex items-center space-x-1 group cursor-pointer">
+                    <div className="flex items-center space-x-1 group cursor-pointer" onClick={(e) => e.stopPropagation()}>
                       <div className="p-2 rounded-full group-hover:bg-sky-500/10 group-hover:text-sky-500 transition">
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -238,7 +259,13 @@ function Feed({fposts, refresh}) {
                     </div>
 
                     {/* Comment Button */}
-                    <div onClick={()=>openComment(post['uid'])} className="flex items-center space-x-1 group cursor-pointer">
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation(); 
+                        openComment(post['uid']);
+                      }} 
+                      className="flex items-center space-x-1 group cursor-pointer"
+                    >
                       <div className="p-2 rounded-full group-hover:bg-sky-500/10 group-hover:text-sky-500 transition">
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
@@ -248,7 +275,13 @@ function Feed({fposts, refresh}) {
                     </div>
 
                     {/* Like Button */}
-                    <div onClick={(e)=>{ if(user && post.likes.indexOf(user.uid)<0) like(post['uid'], post.category, e) }} className="flex items-center space-x-1 group cursor-pointer">
+                    <div 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if(user && post.likes.indexOf(user.uid)<0) like(post['uid'], post.category, e); 
+                      }} 
+                      className="flex items-center space-x-1 group cursor-pointer"
+                    >
                       <div className="p-2 rounded-full group-hover:bg-pink-500/10 group-hover:text-pink-500 transition">
                         <svg className="h-5 w-5" fill={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'none'} stroke={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'currentColor'} strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
@@ -258,7 +291,13 @@ function Feed({fposts, refresh}) {
                     </div>
 
                     {/* Share Button */}
-                    <div onClick={()=>handleShare(post['uid'])} className="flex items-center space-x-1 group cursor-pointer relative">
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShare(post['uid']);
+                      }} 
+                      className="flex items-center space-x-1 group cursor-pointer relative"
+                    >
                       <div className="p-2 rounded-full group-hover:bg-green-500/10 group-hover:text-green-500 transition">
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -276,9 +315,9 @@ function Feed({fposts, refresh}) {
                 </div>
               </div>
 
-              {/* Sezione Commenti */}
+              {/* Sezione Commenti Integrati Dropdown */}
               {open === (post['uid']) && (
-                <div className="mt-4 pl-4 ml-3 border-l border-zinc-800 space-y-4">
+                <div className="mt-4 pl-4 ml-3 border-l border-zinc-800 space-y-4" onClick={(e) => e.stopPropagation()}>
                   {user ? (
                     <div className="flex items-start space-x-3 pt-1">
                       <img className="h-8 w-8 rounded-full object-cover mt-1" src={user.photoURL} alt="" />
@@ -304,7 +343,7 @@ function Feed({fposts, refresh}) {
                     </div>
                   )}
                   
-                  {/* Lista Risposte */}
+                  {/* Lista Risposte Rapide */}
                   <div className="space-y-4 pt-1">
                     {comments && comments.length > 0 ? (
                       comments.map((comment, cIdx)=>(
