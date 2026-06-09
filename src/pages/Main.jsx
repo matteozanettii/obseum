@@ -86,7 +86,7 @@ function Main() {
                             <button 
                                 onClick={login}
                                 className="bg-zinc-100 text-black text-xs font-bold px-4 py-1.5 rounded-full hover:bg-zinc-300 transition duration-150 border border-white inline-block"
-                                style={{ color: '#000000', backgroundColor: '#f4f4f5' }}
+                                style={{ color: '#ffffff', backgroundColor: '#f4f4f5' }}
                             >
                                 Log In
                             </button>
