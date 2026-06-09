@@ -152,7 +152,7 @@ function PostPage() {
               <img className="h-10 w-10 rounded-full object-cover" src={post.img || 'https://via.placeholder.com/150'} alt="" />
               <div>
                 <h2 className="font-bold text-white text-[15px]">{post.username}</h2>
-                <p className="text-zinc-500 text-xs">Obseum Member</p>
+                <p className="text-zinc-500 text-xs">AllMatter Member</p>
               </div>
             </div>
             <p className="text-[#e7e9ea] text-lg mt-4 whitespace-pre-wrap break-words leading-relaxed">

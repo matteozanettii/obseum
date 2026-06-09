@@ -125,7 +125,7 @@ function UserPage() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">@{displayName}</h2>
-                <p className="text-sm text-zinc-400">Obseum Member Profile</p>
+                <p className="text-sm text-zinc-400">AllMatter Member Profile</p>
               </div>
             </div>
           </div>
