@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import Recommendation from '../components/Recommendation';
@@ -18,7 +18,6 @@ function UserPage() {
       try {
         let posts = [];
         
-        // FASE 1: Cerca per campo 'id' alfanumerico
         const qById = query(collection(db, 'posts'), where('id', '==', uid));
         const snapshotById = await getDocs(qById);
         
@@ -26,7 +25,6 @@ function UserPage() {
           posts.push({ uid: doc.id, ...doc.data() });
         });
 
-        // FASE 2: Cerca per campo 'username' testuale
         if (posts.length === 0) {
           const qByUsername = query(collection(db, 'posts'), where('username', '==', uid));
           const snapshotByUsername = await getDocs(qByUsername);
@@ -62,12 +60,20 @@ function UserPage() {
     <>
       <Recommendation />
       <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen">
-        {/* Header del Profilo */}
-        <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10">
-          <h1 className="text-xl font-bold tracking-tight text-white">{displayName}</h1>
-          <p className="text-xs text-zinc-500 font-medium">
-            {userPosts.length} {userPosts.length === 1 ? 'post' : 'posts'}
-          </p>
+        {/* Header superiore con scritta/logo cliccabile per Home */}
+        <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link to="/" className="text-xl font-black tracking-wider text-white hover:opacity-80 transition duration-150">
+              ALLMATTER
+            </Link>
+            <span className="text-zinc-600">|</span>
+            <div>
+              <h1 className="text-md font-bold text-zinc-300 inline-block">{displayName}</h1>
+              <p className="text-[11px] text-zinc-500 font-medium">
+                {userPosts.length} {userPosts.length === 1 ? 'post' : 'posts'}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Box Informazioni */}

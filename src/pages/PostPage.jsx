@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, query, orderBy, addDoc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -91,14 +91,18 @@ function PostPage() {
     <>
       <Recommendation />
       <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen pb-24">
-        {/* Header di navigazione indietro */}
+        {/* Header di navigazione con Scritta Logo cliccabile per tornare in Home */}
         <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10 flex items-center space-x-4">
+          <Link to="/" className="text-xl font-black tracking-wider text-white hover:opacity-80 transition duration-150 mr-2">
+            ALLMATTER
+          </Link>
+          <span className="text-zinc-700">|</span>
           <button onClick={() => window.history.back()} className="text-white hover:bg-zinc-900 p-2 rounded-full transition">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
-          <h1 className="text-xl font-bold text-white">Post</h1>
+          <h1 className="text-md font-bold text-zinc-400">Post</h1>
         </div>
 
         {/* Corpo del Post Principale */}
@@ -143,7 +147,6 @@ function PostPage() {
         <div className="divide-y divide-zinc-800">
           {comments.map((comment, idx) => (
             <div key={idx} className="p-4 flex space-x-3 items-start">
-              {/* Qui il tag alt è stato corretto eliminando il backslash di escape d'errore */}
               <img className="h-9 w-9 rounded-full object-cover" src={comment.img || 'https://via.placeholder.com/150'} alt="" />
               <div className="flex-1 min-w-0">
                 <span className="font-bold text-white hover:underline cursor-pointer text-[15px]">{comment.username}</span>
