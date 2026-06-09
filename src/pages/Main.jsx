@@ -22,46 +22,48 @@ function Main() {
         
         setPosts(msgs);
         setLoading(false);
-        console.log('update');
     };
 
     if (loading) {
         getFeed();
     }
 
-    // Funzione per aggiornare la pagina al clic su ALLMATTER
     const handleLogoClick = () => {
         window.location.reload();
     };
   
     return (
-        <>
-            <Recommendation />
-            
-            {/* Contenitore centrale con Header fisso in alto */}
-            <div className="w-full max-w-2xl mx-auto border-x border-zinc-800 bg-black min-h-screen">
+        <div className="bg-black min-h-screen text-white w-full">
+            {/* AGGANCIO FLEX: Mette i componenti in riga e li centra nello schermo */}
+            <div className="flex max-w-5xl mx-auto justify-center items-start px-4">
                 
-                {/* Header superiore con scritta ALLMATTER interattiva */}
-                <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10 flex items-center">
-                    <button 
-                        onClick={handleLogoClick}
-                        className="text-xl font-black tracking-wider text-white hover:opacity-80 transition duration-150 cursor-pointer uppercase bg-transparent border-none outline-none text-left p-0"
-                    >
-                        ALLMATTER
-                    </button>
+                {/* Colonna Centrale (Feed e Scrittura) */}
+                <div className="w-full max-w-2xl border-x border-zinc-800 bg-black min-h-screen">
+                    {/* Header superiore fisso */}
+                    <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10 flex items-center">
+                        <button 
+                            onClick={handleLogoClick}
+                            className="text-xl font-black tracking-wider text-white hover:opacity-80 transition duration-150 cursor-pointer uppercase bg-transparent border-none outline-none text-left p-0"
+                        >
+                            ALLMATTER
+                        </button>
+                    </div>
+
+                    <Post refresh={getFeed} />
+                    
+                    <div className='px-4 py-2 text-zinc-500 text-xs font-bold uppercase tracking-wider border-b border-zinc-800 bg-zinc-950/20'>
+                        Feed
+                    </div>
+                    
+                    {loading && <div className='p-4 text-center text-zinc-500 text-sm italic'>Loading...</div>}
+                    {posts && <Feed fposts={posts} refresh={getFeed} />}
                 </div>
 
-                {/* Componente per scrivere i post */}
-                <Post refresh={getFeed} />
+                {/* Colonna Destra (Trend) - Adesso si affianca a destra grazie al flex padre */}
+                <Recommendation />
                 
-                <div className='color-1 px-4 py-2 text-zinc-500 text-xs font-bold uppercase tracking-wider border-b border-zinc-800 bg-zinc-950/20'>
-                    Feed
-                </div>
-                
-                {loading && <div className='p-4 text-center text-zinc-500 text-sm italic'>Loading...</div>}
-                {posts && <Feed fposts={posts} refresh={getFeed} />}
             </div>
-        </>
+        </div>
     );
 }
 
