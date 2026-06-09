@@ -151,14 +151,10 @@ function Feed({fposts, refresh}) {
     });
   };
 
-  // FUNZIONE MAGICA: Riconosce i link nel testo e li rende cliccabili ed estetici
+  // Funzione per rendere i link cliccabili
   const renderTextWithLinks = (inputText) => {
     if (!inputText) return '';
-    
-    // Espressione regolare che intercetta i link HTTP/HTTPS
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    
-    // Divide il testo in base ai link trovati
     const parts = inputText.split(urlRegex);
     
     return parts.map((part, index) => {
@@ -170,7 +166,7 @@ function Feed({fposts, refresh}) {
             target="_blank" 
             rel="noopener noreferrer" 
             className="text-sky-500 hover:underline break-all inline-block font-medium"
-            onClick={(e) => e.stopPropagation()} // Evita che il click sul link attivi altre funzioni del post
+            onClick={(e) => e.stopPropagation()}
           >
             {part}
           </a>
@@ -178,6 +174,14 @@ function Feed({fposts, refresh}) {
       }
       return part;
     });
+  };
+
+  // FUNZIONE EXTRACTOR: Trova l'ID di un video YouTube nel testo (sia link lunghi che corti youtu.be)
+  const extractYouTubeId = (inputText) => {
+    if (!inputText) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = inputText.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
   };
 
   return (
@@ -201,10 +205,24 @@ function Feed({fposts, refresh}) {
                     </span>
                   </div>
                   
-                  {/* Testo del post modificato per far girare la funzione dei link cliccabili */}
+                  {/* Testo del post */}
                   <p className="text-[#e7e9ea] text-[15px] leading-relaxed mt-1 whitespace-pre-wrap break-words">
                     {renderTextWithLinks(post.text)}
                   </p>
+
+                  {/* ANTEPRIMA VIDEO YOUTUBE DINAMICA */}
+                  {extractYouTubeId(post.text) && (
+                    <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800 aspect-video w-full bg-zinc-950">
+                      <iframe
+                        className="w-full h-full"
+                        src={`https://www.youtube.com/embed/${extractYouTubeId(post.text)}`}
+                        title="YouTube video player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  )}
 
                   <div className="flex justify-between max-w-md mt-4 text-zinc-500">
                     
@@ -301,7 +319,6 @@ function Feed({fposts, refresh}) {
                               <span className="font-bold text-white mr-1.5 hover:underline cursor-pointer">{comment.username}</span>
                               <span className="text-zinc-500 text-xs">replied</span>
                             </div>
-                            {/* Anche i commenti ora usano la funzione dei link cliccabili */}
                             <p className="text-zinc-300 text-[14px] leading-relaxed mt-0.5 break-words whitespace-pre-wrap">
                               {renderTextWithLinks(comment.text)}
                             </p>
