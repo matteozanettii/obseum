@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Post from '../components/Post';
 import Recommendation from '../components/Recommendation';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
@@ -29,23 +29,29 @@ function Main() {
     };
     
     const getFeed = async () => {
-        const q = query(collection(db, 'posts'), orderBy('date', 'desc'), limit(100));
-        const querySnapshot = await getDocs(q);
-        const msgs = [];
-        
-        querySnapshot.forEach((doc) => {
-            let data = doc.data();
-            data['uid'] = doc.id;
-            msgs.push(data);
-        });
-        
-        setPosts(msgs);
-        setLoading(false);
+        try {
+            const q = query(collection(db, 'posts'), orderBy('date', 'desc'), limit(100));
+            const querySnapshot = await getDocs(q);
+            const msgs = [];
+            
+            querySnapshot.forEach((doc) => {
+                let data = doc.data();
+                data['uid'] = doc.id;
+                msgs.push(data);
+            });
+            
+            setPosts(msgs);
+        } catch (error) {
+            console.error("Error fetching feed:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    if (loading) {
+    // PROTEZIONE LOOP: Carica il feed in modo sicuro solo all'avvio della pagina
+    useEffect(() => {
         getFeed();
-    }
+    }, []);
 
     const handleLogoClick = () => {
         window.location.reload();
@@ -53,7 +59,6 @@ function Main() {
   
     return (
         <div className="bg-black min-h-screen text-white w-full">
-            {/* Contenitore flessibile centrale */}
             <div className="flex max-w-5xl mx-auto justify-center items-start px-4">
                 
                 {/* Colonna Centrale */}
@@ -80,14 +85,14 @@ function Main() {
                         ) : (
                             <button 
                                 onClick={login}
-                                className="bg-white text-black font-bold text-xs px-4 py-1.5 rounded-full hover:bg-zinc-200 transition duration-150"
+                                className="bg-zinc-100 text-black text-xs font-bold px-4 py-1.5 rounded-full hover:bg-zinc-300 transition duration-150 border border-white inline-block"
+                                style={{ color: '#000000', backgroundColor: '#f4f4f5' }}
                             >
                                 Log In
                             </button>
                         )}
                     </div>
 
-                    {/* Componente di scrittura post (visibile solo se loggato all'interno del componente o gestito internamente) */}
                     <Post refresh={getFeed} />
                     
                     <div className='px-4 py-2 text-zinc-500 text-xs font-bold uppercase tracking-wider border-b border-zinc-800 bg-zinc-950/20'>
