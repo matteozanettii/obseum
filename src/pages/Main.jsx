@@ -2,12 +2,31 @@ import React, { useState } from 'react';
 import Post from '../components/Post';
 import Recommendation from '../components/Recommendation';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { db } from '../firebase';
+import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { db, auth } from '../firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import Feed from '../components/Feed';
 
 function Main() {
+    const [user] = useAuthState(auth);
     const [loading, setLoading] = useState(true);
     const [posts, setPosts] = useState();
+
+    const provider = new GoogleAuthProvider();
+
+    const login = async () => {
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (err) {
+            console.error("Login failed:", err);
+        }
+    };
+
+    const logout = () => {
+        if (window.confirm("Do you want to log out?")) {
+            signOut(auth);
+        }
+    };
     
     const getFeed = async () => {
         const q = query(collection(db, 'posts'), orderBy('date', 'desc'), limit(100));
@@ -34,21 +53,41 @@ function Main() {
   
     return (
         <div className="bg-black min-h-screen text-white w-full">
-            {/* AGGANCIO FLEX: Mette i componenti in riga e li centra nello schermo */}
+            {/* Contenitore flessibile centrale */}
             <div className="flex max-w-5xl mx-auto justify-center items-start px-4">
                 
-                {/* Colonna Centrale (Feed e Scrittura) */}
+                {/* Colonna Centrale */}
                 <div className="w-full max-w-2xl border-x border-zinc-800 bg-black min-h-screen">
-                    {/* Header superiore fisso */}
-                    <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10 flex items-center">
+                    
+                    {/* Header superiore con ALLMATTER e Login/Logout */}
+                    <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10 flex items-center justify-between">
                         <button 
                             onClick={handleLogoClick}
                             className="text-xl font-black tracking-wider text-white hover:opacity-80 transition duration-150 cursor-pointer uppercase bg-transparent border-none outline-none text-left p-0"
                         >
                             ALLMATTER
                         </button>
+
+                        {/* Tasto Login o Foto Profilo Logout */}
+                        {user ? (
+                            <img 
+                                onClick={logout}
+                                src={user.photoURL} 
+                                alt="Logout" 
+                                className="h-8 w-8 rounded-full border border-zinc-700 object-cover cursor-pointer hover:opacity-70 transition duration-150"
+                                title="Click to logout"
+                            />
+                        ) : (
+                            <button 
+                                onClick={login}
+                                className="bg-white text-black font-bold text-xs px-4 py-1.5 rounded-full hover:bg-zinc-200 transition duration-150"
+                            >
+                                Log In
+                            </button>
+                        )}
                     </div>
 
+                    {/* Componente di scrittura post (visibile solo se loggato all'interno del componente o gestito internamente) */}
                     <Post refresh={getFeed} />
                     
                     <div className='px-4 py-2 text-zinc-500 text-xs font-bold uppercase tracking-wider border-b border-zinc-800 bg-zinc-950/20'>
@@ -59,7 +98,7 @@ function Main() {
                     {posts && <Feed fposts={posts} refresh={getFeed} />}
                 </div>
 
-                {/* Colonna Destra (Trend) - Adesso si affianca a destra grazie al flex padre */}
+                {/* Colonna Destra (Trend) */}
                 <Recommendation />
                 
             </div>
