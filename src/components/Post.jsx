@@ -6,9 +6,8 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 function Post({ refresh }) {
   const [text, setText] = useState('');
   const [user] = useAuthState(auth);
-  const [error, setError] = useState(''); // Stato per gestire i messaggi di blocco della sicurezza
+  const [error, setError] = useState('');
 
-  // LISTA NERA MULTILINGUA (Parole offensive/pornografiche e domini spam comuni)
   const blacklist = [
     'porn', 'sex', 'porno', 'xxx', 'hentai', 'naked', 'nude', 'nudi', 'nuda',
     'viagra', 'casino', 'betting', 'sesso', 'puttana', 'troia', 'vaffanculo',
@@ -19,18 +18,16 @@ function Post({ refresh }) {
   const sendPost = async () => {
     if (!text.trim() || !user) return;
     
-    setError(''); // Resetta eventuali errori precedenti
+    setError('');
     const lowerText = text.toLowerCase();
 
-    // CONTROLLO DI SICUREZZA: Scansiona il testo parola per parola
     const containsBadWord = blacklist.some((word) => {
-      // Controlla se la stringa vietata è contenuta nel testo (funziona sia per parole isolate che nei link)
       return lowerText.includes(word);
     });
 
     if (containsBadWord) {
       setError('Content not allowed. Please keep the community safe!');
-      return; // BLOCCO IMMEDIATO: Impedisce l'esecuzione di addDoc su Firebase
+      return;
     }
 
     try {
@@ -40,7 +37,7 @@ function Post({ refresh }) {
         username: user.displayName,
         img: user.photoURL,
         date: serverTimestamp(),
-        likes: [],
+        likes: 0, // Inizializza come numero puro per permettere i Like Infiniti!
         comments: 0,
         views: 0,
         category: 'Other'
@@ -53,7 +50,6 @@ function Post({ refresh }) {
     }
   };
 
-  // Se l'utente non è loggato, blocchiamo il rendering qui
   if (!user) return null;
 
   return (
@@ -65,13 +61,12 @@ function Post({ refresh }) {
             value={text}
             onChange={(e) => {
               setText(e.target.value);
-              if (error) setError(''); // Rimuove l'errore appena l'utente ricomincia a scrivere
+              if (error) setError('');
             }}
             className="w-full bg-transparent text-white text-lg placeholder-zinc-500 outline-none resize-none border-none focus:ring-0 min-h-[60px]"
-            placeholder="Che c'è di nuovo?"
+            placeholder="What's happening?" // Aggiornato in inglese globale!
           />
 
-          {/* MESSAGGIO DI AVVISO DI SICUREZZA */}
           {error && (
             <div className="text-red-500 text-xs font-semibold bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl mt-2 animate-pulse">
               ⚠️ {error}

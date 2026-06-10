@@ -1,4 +1,4 @@
-import { doc, getDocs, query, collection, orderBy, updateDoc, arrayUnion, addDoc, serverTimestamp, increment} from 'firebase/firestore'
+import { doc, getDocs, query, collection, orderBy, updateDoc, addDoc, serverTimestamp, increment} from 'firebase/firestore'
 import {auth, db} from '../firebase'
 import React, {useState, useEffect} from 'react'
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -33,6 +33,7 @@ function Feed({fposts, refresh}) {
   const [user] = useAuthState(auth);
   const [shareStatus, setShareStatus] = useState({});
 
+  // Impression passive al caricamento del feed
   useEffect(() => {
     if (fposts && fposts.length > 0) {
       fposts.forEach(async (post) => {
@@ -76,13 +77,30 @@ function Feed({fposts, refresh}) {
     return string;
   }
 
-  const like = async(id, category, e)=>{
-    if(!user) return;
-    await updateDoc(doc(db, 'posts', id), {
-      likes: arrayUnion(user.uid),
-    });
+  // 💥 BOTTONE INTERATTIVO: Like infiniti + incremento views (Impression) ad ogni singolo click
+  const handleSpamLike = async (id, currentLikes, e) => {
+    e.stopPropagation();
+    
+    const postRef = doc(db, 'posts', id);
+    
+    // Gestione ibrida intelligente per non rompere i vecchi post nel database
+    let baseIncrement = 1;
+    if (Array.isArray(currentLikes)) {
+        // Se il campo è ancora un vecchio array, lo convertiamo sul momento forzando un numero alto
+        baseIncrement = currentLikes.length + 1;
+        await updateDoc(postRef, {
+            likes: baseIncrement,
+            views: increment(1)
+        });
+    } else {
+        // Logica standard a regime: incrementa semplicemente di 1 sia i like che le impression
+        await updateDoc(postRef, {
+            likes: increment(1),
+            views: increment(1)
+        });
+    }
     refresh();
-  }
+  };
 
   const openComment = async(uid)=>{
     if(open === uid){
@@ -98,9 +116,14 @@ function Feed({fposts, refresh}) {
         comms.push(doc.data());
       });
       setComments(comms);
+
+      // Incrementa la visualizzazione quando apri i commenti
+      await updateDoc(doc(db, 'posts', uid), {
+        views: increment(1)
+      }).catch(err => console.error(err));
     }
     setText('');
-  }
+  };
 
   const sendComment = async (postId) => {
     if (!text.trim() || !user) return;
@@ -113,8 +136,10 @@ function Feed({fposts, refresh}) {
         date: serverTimestamp()
       });
 
+      // Incrementa commenti e regala un'ulteriore visualizzazione (Impression)
       await updateDoc(doc(db, 'posts', postId), {
-        comments: increment(1)
+        comments: increment(1),
+        views: increment(1)
       });
 
       setText('');
@@ -137,8 +162,10 @@ function Feed({fposts, refresh}) {
       setShareStatus(prev => ({ ...prev, [postId]: 'Copied!' }));
       
       try {
+        // La condivisione aumenta la viralità e regala un'ulteriore impression
         await updateDoc(doc(db, 'posts', postId), {
-          shares: increment(1)
+          shares: increment(1),
+          views: increment(1)
         });
         refresh();
       } catch (err) {
@@ -151,7 +178,6 @@ function Feed({fposts, refresh}) {
     });
   };
 
-  // Funzione per rendere i link cliccabili
   const renderTextWithLinks = (inputText) => {
     if (!inputText) return '';
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -166,7 +192,7 @@ function Feed({fposts, refresh}) {
             target="_blank" 
             rel="noopener noreferrer" 
             className="text-sky-500 hover:underline break-all inline-block font-medium"
-            onClick={(e) => e.stopPropagation()} // Blocca il cambio pagina se clicchi il link blu
+            onClick={(e) => e.stopPropagation()}
           >
             {part}
           </a>
@@ -176,7 +202,6 @@ function Feed({fposts, refresh}) {
     });
   };
 
-  // FUNZIONE EXTRACTOR: Trova l'ID di un video YouTube nel testo
   const extractYouTubeId = (inputText) => {
     if (!inputText) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -191,17 +216,15 @@ function Feed({fposts, refresh}) {
       {
         fposts?.map((post, index)=>(
           <React.Fragment key={post['uid']}>
-            {/* INTERO BOX POST CLICCABILE: Reindirizza alla pagina del singolo post */}
             <div 
               onClick={() => window.location.href = `/post/${post['uid']}`}
               className="p-4 border-b border-zinc-800 hover:bg-zinc-900/10 transition duration-200 cursor-pointer"
             >
               <div className="flex space-x-3">
-                {/* Link Profilo: Usa lo username per evitare gli ID alfanumerici brutti */}
                 <a 
                   href={'/user/' + (post.username || post.id)} 
                   className="flex-shrink-0"
-                  onClick={(e) => e.stopPropagation()} // Impedisce di attivare il click del post
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <img className="h-10 w-10 rounded-full object-cover" src={post.img ? post.img : 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1665px-No-Image-Placeholder.svg.png'} alt="" />
                 </a>
@@ -223,16 +246,14 @@ function Feed({fposts, refresh}) {
                     </span>
                   </div>
                   
-                  {/* Testo del post */}
                   <p className="text-[#e7e9ea] text-[15px] leading-relaxed mt-1 whitespace-pre-wrap break-words">
                     {renderTextWithLinks(post.text)}
                   </p>
 
-                  {/* ANTEPRIMA VIDEO YOUTUBE DINAMICA */}
                   {extractYouTubeId(post.text) && (
                     <div 
                       className="mt-3 rounded-2xl overflow-hidden border border-zinc-800 aspect-video w-full bg-zinc-950"
-                      onClick={(e) => e.stopPropagation()} // Non fa cambiare pagina se clicchi sul player
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <iframe
                         className="w-full h-full"
@@ -274,20 +295,19 @@ function Feed({fposts, refresh}) {
                       <span className="group-hover:text-sky-500 text-[14px] font-medium pl-0.5">{post.comments ? post.comments : '0'}</span>
                     </div>
 
-                    {/* Like Button */}
+                    {/* Like Button (Sbloccato ed Infinito) */}
                     <div 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        if(user && post.likes.indexOf(user.uid)<0) like(post['uid'], post.category, e); 
-                      }} 
+                      onClick={(e) => handleSpamLike(post['uid'], post.likes, e)} 
                       className="flex items-center space-x-1 group cursor-pointer"
                     >
                       <div className="p-2 rounded-full group-hover:bg-pink-500/10 group-hover:text-pink-500 transition">
-                        <svg className="h-5 w-5" fill={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'none'} stroke={user && post.likes.indexOf(user.uid)>=0 ? '#ec4899' : 'currentColor'} strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill={post.likes && (Array.isArray(post.likes) ? post.likes.length > 0 : post.likes > 0) ? '#ec4899' : 'none'} stroke={post.likes && (Array.isArray(post.likes) ? post.likes.length > 0 : post.likes > 0) ? '#ec4899' : 'currentColor'} strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                         </svg>
                       </div>
-                      <span className="group-hover:text-pink-500 text-[14px] font-medium pl-0.5">{likesConvert(post.likes.length)}</span>
+                      <span className="group-hover:text-pink-500 text-[14px] font-medium pl-0.5">
+                        {Array.isArray(post.likes) ? likesConvert(post.likes.length) : likesConvert(post.likes)}
+                      </span>
                     </div>
 
                     {/* Share Button */}
@@ -315,7 +335,6 @@ function Feed({fposts, refresh}) {
                 </div>
               </div>
 
-              {/* Sezione Commenti Integrati Dropdown */}
               {open === (post['uid']) && (
                 <div className="mt-4 pl-4 ml-3 border-l border-zinc-800 space-y-4" onClick={(e) => e.stopPropagation()}>
                   {user ? (
@@ -343,7 +362,6 @@ function Feed({fposts, refresh}) {
                     </div>
                   )}
                   
-                  {/* Lista Risposte Rapide */}
                   <div className="space-y-4 pt-1">
                     {comments && comments.length > 0 ? (
                       comments.map((comment, cIdx)=>(
