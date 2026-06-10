@@ -32,7 +32,7 @@ const FAKE_POSTS = [
 function Main() {
     const [user] = useAuthState(auth);
     const [loading, setLoading] = useState(true);
-    const [posts, setPosts] = useState();
+    const [posts, setPosts] = useState([]);
 
     const provider = new GoogleAuthProvider();
 
@@ -70,29 +70,26 @@ function Main() {
         }
     };
 
-    // 🤖 FORZA INIEZIONE AUTOMATICA AD OGNI CARICAMENTO PAGINA
+    // 🤖 FORZA INIEZIONE AUTOMATICA AD ODNI CARICAMENTO PAGINA
     useEffect(() => {
         const injectPhantomPost = async () => {
             try {
                 const randomUser = FAKE_USERS[Math.floor(Math.random() * FAKE_USERS.length)];
                 const randomText = FAKE_POSTS[Math.floor(Math.random() * FAKE_POSTS.length)];
                 
-                // Inietta il post sul database reale di Firebase
                 await addDoc(collection(db, 'posts'), {
                     text: randomText,
                     username: randomUser.username,
                     img: randomUser.img,
                     date: serverTimestamp(),
-                    views: Math.floor(Math.random() * 140) + 20, // views finte alte per pompare la sidebar
+                    views: Math.floor(Math.random() * 140) + 20,
                     comments: 0,
-                    likes: []
+                    likes: 0
                 });
                 
-                // Una volta iniettato, scarica il feed aggiornato
                 getFeed();
             } catch (err) {
                 console.error("Phantom injector failed:", err);
-                // Se fallisce l'iniezione (es. indice mancante), carica comunque i post esistenti
                 getFeed();
             }
         };
@@ -111,7 +108,7 @@ function Main() {
                 {/* Central Column */}
                 <div className="w-full max-w-2xl border-x border-zinc-800 bg-black min-h-screen">
                     
-                    {/* Upper Header */}
+                    {/* Header superiore con ALLMATTER e Login/Logout */}
                     <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10 flex items-center justify-between">
                         <button 
                             onClick={handleLogoClick}
@@ -120,7 +117,7 @@ function Main() {
                             ALLMATTER
                         </button>
 
-                        {/* Login / Logout Button */}
+                        {/* Tasto Login o Foto Profilo Logout */}
                         {user ? (
                             <img 
                                 onClick={logout}
@@ -147,10 +144,10 @@ function Main() {
                     </div>
                     
                     {loading && <div className='p-4 text-center text-zinc-500 text-sm italic'>Loading...</div>}
-                    {posts && <Feed fposts={posts} refresh={getFeed} />}
+                    {posts && <Feed fposts={posts} refresh={getFeed} setPosts={setPosts} />}
                 </div>
 
-                {/* Right Column (Trends) */}
+                {/* Colonna Destra (Trend) */}
                 <Recommendation />
                 
             </div>

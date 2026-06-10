@@ -26,14 +26,14 @@ function MonetagAd({ zoneId, index, isVignette }) {
   return <div id={containerId}></div>;
 }
 
-function Feed({fposts, refresh}) {
+function Feed({fposts, refresh, setPosts}) {
   const [open, setOpen] = useState('');
   const [comments, setComments] = useState([]);
   const [text, setText] = useState('');
   const [user] = useAuthState(auth);
   const [shareStatus, setShareStatus] = useState({});
 
-  // Impression passive al caricamento del feed
+  // Passive impression counter when the component renders
   useEffect(() => {
     if (fposts && fposts.length > 0) {
       fposts.forEach(async (post) => {
@@ -43,7 +43,7 @@ function Feed({fposts, refresh}) {
         }).catch(err => console.error("Error updating views:", err));
       });
     }
-  }, [fposts]);
+  }, []);
 
   function dateCovert(day, month){
     let m = '';
@@ -77,29 +77,43 @@ function Feed({fposts, refresh}) {
     return string;
   }
 
-  // 💥 BOTTONE INTERATTIVO: Like infiniti + incremento views (Impression) ad ogni singolo click
+  // 💥 OPTIMISTIC UI: Instant ultra-fluid click response without freezing or visual drops
   const handleSpamLike = async (id, currentLikes, e) => {
     e.stopPropagation();
     
-    const postRef = doc(db, 'posts', id);
-    
-    // Gestione ibrida intelligente per non rompere i vecchi post nel database
-    let baseIncrement = 1;
-    if (Array.isArray(currentLikes)) {
-        // Se il campo è ancora un vecchio array, lo convertiamo sul momento forzando un numero alto
-        baseIncrement = currentLikes.length + 1;
-        await updateDoc(postRef, {
-            likes: baseIncrement,
-            views: increment(1)
-        });
-    } else {
-        // Logica standard a regime: incrementa semplicemente di 1 sia i like che le impression
-        await updateDoc(postRef, {
-            likes: increment(1),
-            views: increment(1)
-        });
+    // Step 1: Update UI instantly in state
+    setPosts(prevPosts => 
+      prevPosts.map(post => {
+        if (post.uid === id) {
+          const isArray = Array.isArray(post.likes);
+          const currentCount = isArray ? post.likes.length : (post.likes || 0);
+          return {
+            ...post,
+            likes: currentCount + 1,
+            views: (post.views || 0) + 1
+          };
+        }
+        return post;
+      })
+    );
+
+    // Step 2: Fire and forget update on Firebase in background
+    try {
+      const postRef = doc(db, 'posts', id);
+      if (Array.isArray(currentLikes)) {
+          await updateDoc(postRef, {
+              likes: currentLikes.length + 1,
+              views: increment(1)
+          });
+      } else {
+          await updateDoc(postRef, {
+              likes: increment(1),
+              views: increment(1)
+          });
+      }
+    } catch (err) {
+      console.error("Error updating spam like database record:", err);
     }
-    refresh();
   };
 
   const openComment = async(uid)=>{
@@ -117,13 +131,13 @@ function Feed({fposts, refresh}) {
       });
       setComments(comms);
 
-      // Incrementa la visualizzazione quando apri i commenti
+      // Interaction bumps views counter
       await updateDoc(doc(db, 'posts', uid), {
         views: increment(1)
       }).catch(err => console.error(err));
     }
     setText('');
-  };
+  }
 
   const sendComment = async (postId) => {
     if (!text.trim() || !user) return;
@@ -136,7 +150,6 @@ function Feed({fposts, refresh}) {
         date: serverTimestamp()
       });
 
-      // Incrementa commenti e regala un'ulteriore visualizzazione (Impression)
       await updateDoc(doc(db, 'posts', postId), {
         comments: increment(1),
         views: increment(1)
@@ -162,7 +175,6 @@ function Feed({fposts, refresh}) {
       setShareStatus(prev => ({ ...prev, [postId]: 'Copied!' }));
       
       try {
-        // La condivisione aumenta la viralità e regala un'ulteriore impression
         await updateDoc(doc(db, 'posts', postId), {
           shares: increment(1),
           views: increment(1)
@@ -295,7 +307,7 @@ function Feed({fposts, refresh}) {
                       <span className="group-hover:text-sky-500 text-[14px] font-medium pl-0.5">{post.comments ? post.comments : '0'}</span>
                     </div>
 
-                    {/* Like Button (Sbloccato ed Infinito) */}
+                    {/* Like Button (Infinite + Optimized) */}
                     <div 
                       onClick={(e) => handleSpamLike(post['uid'], post.likes, e)} 
                       className="flex items-center space-x-1 group cursor-pointer"
@@ -306,7 +318,7 @@ function Feed({fposts, refresh}) {
                         </svg>
                       </div>
                       <span className="group-hover:text-pink-500 text-[14px] font-medium pl-0.5">
-                        {Array.isArray(post.likes) ? likesConvert(post.likes.length) : likesConvert(post.likes)}
+                        {post.likes && (Array.isArray(post.likes) ? likesConvert(post.likes.length) : likesConvert(post.likes))}
                       </span>
                     </div>
 
